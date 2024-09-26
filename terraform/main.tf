@@ -7,10 +7,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "medusa-terraform-state-bucket-new-unique"  # Replace with your unique bucket name
+    bucket         = "medusa-terraform-state-bucket-new-unique"  # Unique S3 bucket for state management
     key            = "terraform/state"  # Path within the bucket to store the state file
     region         = "ap-south-1"  # AWS region for the S3 bucket
-    dynamodb_table = "new-terraform-lock-table"  # Replace with your DynamoDB table name for state locking
+    dynamodb_table = "new-terraform-lock-table"  # DynamoDB table for state locking
     encrypt        = true
   }
 }
@@ -21,16 +21,14 @@ resource "aws_service_discovery_private_dns_namespace" "medusa_namespace" {
 }
 
 resource "aws_service_discovery_service" "medusa_service" {
-  name                 = "medusa-postgres-service"
+  name = "medusa-postgres-service"
   dns_config {
     namespace_id = aws_service_discovery_private_dns_namespace.medusa_namespace.id
-
     dns_records {
-      type = "A" # or "SRV" depending on your needs
+      type = "A"
       ttl  = 60
     }
   }
-
   health_check_custom_config {
     failure_threshold = 1
   }
@@ -54,23 +52,13 @@ resource "aws_ecs_task_definition" "medusa_postgres" {
       protocol      = "tcp"
     }]
     environment = [
-      {
-        name  = "POSTGRES_USER"
-        value = "medusa"
-      },
-      {
-        name  = "POSTGRES_PASSWORD"
-        value = "medusa_password"
-      },
-      {
-        name  = "POSTGRES_DB"
-        value = "medusa_db"
-      }
+      { name = "POSTGRES_USER", value = "medusa" },
+      { name = "POSTGRES_PASSWORD", value = "medusa_password" },
+      { name = "POSTGRES_DB", value = "medusa_db" }
     ]
   }])
 }
 
-# ECS Service for Medusa Postgres
 resource "aws_ecs_service" "postgres_service" {
   name                   = "medusa-postgres-service"
   cluster                = aws_ecs_cluster.cluster_to_deploy_the_containers.id
@@ -80,19 +68,16 @@ resource "aws_ecs_service" "postgres_service" {
     capacity_provider = "FARGATE_SPOT"
     weight            = 1
   }
-
   network_configuration {
     subnets          = [aws_subnet.subnet_id.id]
     security_groups  = [aws_security_group.sg_id.id]
     assign_public_ip = true
   }
-
   service_registries {
     registry_arn = aws_service_discovery_service.medusa_service.arn
   }
 }
 
-# ECS Task Definition for Medusa Backend
 resource "aws_ecs_task_definition" "medusa_backend_server" {
   family                   = "medusa_backend"
   network_mode             = "awsvpc"
@@ -104,33 +89,18 @@ resource "aws_ecs_task_definition" "medusa_backend_server" {
   
   container_definitions = jsonencode([{
     name      = "medusa_backend"
-    image     = "440744245577.dkr.ecr.ap-south-1.amazonaws.com/medusa-ecr:${var.image_tag}"  # Updated image reference
+    image     = "440744245577.dkr.ecr.ap-south-1.amazonaws.com/medusa-ecr:${var.image_tag}"  # Updated ECR repository
     essential = true
-    portMappings = [{
-      containerPort = 9000
-    }]
+    portMappings = [{ containerPort = 9000 }]
     environment = [
-      {
-        name  = "POSTGRES_USER"
-        value = "medusa"
-      },
-      {
-        name  = "POSTGRES_PASSWORD"
-        value = "medusa_password"
-      },
-      {
-        name  = "POSTGRES_DB"
-        value = "medusa_db"
-      },
-      {
-        name  = "DATABASE_URL"
-        value = "postgres://medusa:medusa_password@medusa-postgres-service.medusa.local:5432/medusa_db"
-      }
+      { name = "POSTGRES_USER", value = "medusa" },
+      { name = "POSTGRES_PASSWORD", value = "medusa_password" },
+      { name = "POSTGRES_DB", value = "medusa_db" },
+      { name = "DATABASE_URL", value = "postgres://medusa:medusa_password@medusa-postgres-service.medusa.local:5432/medusa_db" }
     ]
   }])
 }
 
-# ECS Service for Medusa Backend
 resource "aws_ecs_service" "pearlthoughts_medusa" {
   name                   = "pearlthoughts_medusa-service"
   cluster                = aws_ecs_cluster.cluster_to_deploy_the_containers.id
@@ -140,8 +110,7 @@ resource "aws_ecs_service" "pearlthoughts_medusa" {
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
     weight            = 1
-  } 
-
+  }
   network_configuration {
     subnets          = [aws_subnet.subnet_id.id]
     security_groups  = [aws_security_group.sg_id.id]
@@ -151,14 +120,18 @@ resource "aws_ecs_service" "pearlthoughts_medusa" {
 
 # S3 Bucket for Terraform State Management
 resource "aws_s3_bucket" "terraform_state_bucket" {
-  bucket = "medusa-terraform-state-bucket-new-unique"  # Make sure this bucket name is unique
+  bucket = "medusa-terraform-state-bucket-new-unique"  # Unique bucket name
+}
+
+# Define ACL for S3 bucket separately
+resource "aws_s3_bucket_acl" "terraform_state_bucket_acl" {
+  bucket = aws_s3_bucket.terraform_state_bucket.id
   acl    = "private"
-  region = "ap-south-1"
 }
 
 # DynamoDB Table for Terraform State Locking
 resource "aws_dynamodb_table" "terraform_lock_table" {
-  name           = "new-terraform-lock-table"  # Name of the DynamoDB table for state locking
+  name           = "new-terraform-lock-table"
   billing_mode   = "PAY_PER_REQUEST"
   attribute {
     name = "LockID"
@@ -166,4 +139,3 @@ resource "aws_dynamodb_table" "terraform_lock_table" {
   }
   hash_key = "LockID"
 }
-
