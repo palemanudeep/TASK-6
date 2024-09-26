@@ -67,9 +67,18 @@ jobs:
           cd terraform
           terraform init
 
-      # Terraform Apply to Update ECS Task Definition and Deploy
-      - name: Terraform Apply
+      # Terraform Plan
+      - name: Terraform Plan
         run: |
           cd terraform
-          terraform apply -auto-approve -var "image_tag=${{ github.sha }}"
-        continue-on-error: false # Ensure the workflow fails if this step fails
+          terraform plan -var "image_tag=${{ github.sha }}"
+
+      # Conditional Terraform Apply or Destroy
+      - name: Terraform Apply or Destroy
+        run: |
+          cd terraform
+          if [[ '${{ github.event.inputs.action }}' == 'apply' ]]; then
+            terraform apply -auto-approve -var "image_tag=${{ github.sha }}"
+          elif [[ '${{ github.event.inputs.action }}' == 'destroy' ]]; then
+            terraform destroy -auto-approve
+          fi
