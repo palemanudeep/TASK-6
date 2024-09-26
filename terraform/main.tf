@@ -5,7 +5,16 @@ terraform {
       version = "5.63.0"
     }
   }
+
+  backend "s3" {
+    bucket         = "medusa-terraform-state-bucket-new-unique"  # Replace with your unique bucket name
+    key            = "terraform/state"  # Path within the bucket to store the state file
+    region         = "ap-south-1"  # AWS region for the S3 bucket
+    dynamodb_table = "new-terraform-lock-table"  # Replace with your DynamoDB table name for state locking
+    encrypt        = true
+  }
 }
+
 resource "aws_service_discovery_private_dns_namespace" "medusa_namespace" {
   name        = "medusa.local" 
   vpc         = aws_vpc.main.id  
@@ -58,7 +67,6 @@ resource "aws_ecs_task_definition" "medusa_postgres" {
         value = "medusa_db"
       }
     ]
-    
   }])
 }
 
@@ -78,6 +86,7 @@ resource "aws_ecs_service" "postgres_service" {
     security_groups  = [aws_security_group.sg_id.id]
     assign_public_ip = true
   }
+
   service_registries {
     registry_arn = aws_service_discovery_service.medusa_service.arn
   }
@@ -95,7 +104,7 @@ resource "aws_ecs_task_definition" "medusa_backend_server" {
   
   container_definitions = jsonencode([{
     name      = "medusa_backend"
-    image     = "767397946501.dkr.ecr.us-east-1.amazonaws.com/medusa-backend-prod:${var.image_tag}"
+    image     = "440744245577.dkr.ecr.ap-south-1.amazonaws.com/medusa-ecr:${var.image_tag}"  # Updated image reference
     essential = true
     portMappings = [{
       containerPort = 9000
@@ -118,7 +127,6 @@ resource "aws_ecs_task_definition" "medusa_backend_server" {
         value = "postgres://medusa:medusa_password@medusa-postgres-service.medusa.local:5432/medusa_db"
       }
     ]
-    
   }])
 }
 
@@ -141,4 +149,21 @@ resource "aws_ecs_service" "pearlthoughts_medusa" {
   }
 }
 
+# S3 Bucket for Terraform State Management
+resource "aws_s3_bucket" "terraform_state_bucket" {
+  bucket = "medusa-terraform-state-bucket-new-unique"  # Make sure this bucket name is unique
+  acl    = "private"
+  region = "ap-south-1"
+}
+
+# DynamoDB Table for Terraform State Locking
+resource "aws_dynamodb_table" "terraform_lock_table" {
+  name           = "new-terraform-lock-table"  # Name of the DynamoDB table for state locking
+  billing_mode   = "PAY_PER_REQUEST"
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+  hash_key = "LockID"
+}
 
