@@ -6,13 +6,45 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket         = "medusa-terraform-state-bucket-new-unique"  # Unique S3 bucket for state management
-    key            = "terraform/state"  # Path within the bucket to store the state file
-    region         = "ap-south-1"  # AWS region for the S3 bucket
-    dynamodb_table = "new-terraform-lock-table"  # DynamoDB table for state locking
-    encrypt        = true
+ # Check if the S3 bucket exists before creating it
+data "aws_s3_bucket" "existing_state_bucket" {
+  bucket = "medusa-terraform-state-bucket-new-unique"
+}
+
+resource "aws_s3_bucket" "terraform_state_bucket" {
+  bucket = "medusa-terraform-state-bucket-new-unique"
+  acl    = "private"
+
+  # Only create the bucket if it doesn't already exist
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = [acl]
   }
+  depends_on = [data.aws_s3_bucket.existing_state_bucket]
+}
+
+# Check if the DynamoDB table exists before creating it
+data "aws_dynamodb_table" "existing_lock_table" {
+  name = "new-terraform-lock-table"
+}
+
+resource "aws_dynamodb_table" "terraform_lock_table" {
+  name           = "new-terraform-lock-table"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "LockID"
+
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+
+  # Only create the table if it doesn't already exist
+  lifecycle {
+    prevent_destroy = true
+  }
+  depends_on = [data.aws_dynamodb_table.existing_lock_table]
+}
+
 }
 
 resource "aws_service_discovery_private_dns_namespace" "medusa_namespace" {
