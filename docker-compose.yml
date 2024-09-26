@@ -1,0 +1,43 @@
+version: "3"
+services:
+  dev:
+    image: anudeep1/medusa_new_version
+    ports:
+      - "7001:7001"
+      - "9000:9000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://postgres:Anudeep@8074@postgres:5432/medusa-db-hxjrf
+      - REDIS_URL=redis://redis:6379
+    command: >
+      sh -c "npx medusa migrations run && npx medusa user -e some@email.com -p some-password && npm run start"
+    depends_on:
+      - postgres
+      - redis
+    links:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Anudeep@8074
+      POSTGRES_DB: medusa-db-hxjrf
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+volumes:
+  pgdata:
+  redisdata:
