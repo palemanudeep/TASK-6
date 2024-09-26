@@ -6,7 +6,16 @@ terraform {
     }
   }
 
- # Check if the S3 bucket exists before creating it
+  backend "s3" {
+    bucket         = "medusa-terraform-state-bucket-new-unique"  # Ensure this is globally unique
+    key            = "terraform.tfstate"
+    region         = "your-region"  # Replace with your AWS region
+    dynamodb_table = "new-terraform-lock-table"
+    encrypt        = true
+  }
+}
+
+# Check if the S3 bucket exists before creating it
 data "aws_s3_bucket" "existing_state_bucket" {
   bucket = "medusa-terraform-state-bucket-new-unique"
 }
@@ -15,12 +24,11 @@ resource "aws_s3_bucket" "terraform_state_bucket" {
   bucket = "medusa-terraform-state-bucket-new-unique"
   acl    = "private"
 
-  # Only create the bucket if it doesn't already exist
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = [acl]
   }
-  depends_on = [data.aws_s3_bucket.existing_state_bucket]
+
+  count = data.aws_s3_bucket.existing_state_bucket.id == "" ? 1 : 0
 }
 
 # Check if the DynamoDB table exists before creating it
@@ -38,22 +46,21 @@ resource "aws_dynamodb_table" "terraform_lock_table" {
     type = "S"
   }
 
-  # Only create the table if it doesn't already exist
   lifecycle {
     prevent_destroy = true
   }
-  depends_on = [data.aws_dynamodb_table.existing_lock_table]
-}
 
+  count = data.aws_dynamodb_table.existing_lock_table.id == "" ? 1 : 0
 }
 
 resource "aws_service_discovery_private_dns_namespace" "medusa_namespace" {
-  name        = "medusa.local" 
-  vpc         = aws_vpc.main.id  
+  name = "medusa.local"
+  vpc  = aws_vpc.main.id  
 }
 
 resource "aws_service_discovery_service" "medusa_service" {
   name = "medusa-postgres-service"
+  
   dns_config {
     namespace_id = aws_service_discovery_private_dns_namespace.medusa_namespace.id
     dns_records {
@@ -61,6 +68,7 @@ resource "aws_service_discovery_service" "medusa_service" {
       ttl  = 60
     }
   }
+
   health_check_custom_config {
     failure_threshold = 1
   }
@@ -96,15 +104,18 @@ resource "aws_ecs_service" "postgres_service" {
   cluster                = aws_ecs_cluster.cluster_to_deploy_the_containers.id
   task_definition        = aws_ecs_task_definition.medusa_postgres.arn
   desired_count          = 1
+  
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
     weight            = 1
   }
+
   network_configuration {
     subnets          = [aws_subnet.subnet_id.id]
     security_groups  = [aws_security_group.sg_id.id]
     assign_public_ip = true
   }
+
   service_registries {
     registry_arn = aws_service_discovery_service.medusa_service.arn
   }
@@ -139,35 +150,15 @@ resource "aws_ecs_service" "pearlthoughts_medusa" {
   task_definition        = aws_ecs_task_definition.medusa_backend_server.arn
   enable_execute_command = true
   desired_count          = 1
+  
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
     weight            = 1
   }
+
   network_configuration {
     subnets          = [aws_subnet.subnet_id.id]
     security_groups  = [aws_security_group.sg_id.id]
     assign_public_ip = true
   }
-}
-
-# S3 Bucket for Terraform State Management
-resource "aws_s3_bucket" "terraform_state_bucket" {
-  bucket = "medusa-terraform-state-bucket-new-unique"  # Unique bucket name
-}
-
-# Define ACL for S3 bucket separately
-resource "aws_s3_bucket_acl" "terraform_state_bucket_acl" {
-  bucket = aws_s3_bucket.terraform_state_bucket.id
-  acl    = "private"
-}
-
-# DynamoDB Table for Terraform State Locking
-resource "aws_dynamodb_table" "terraform_lock_table" {
-  name           = "new-terraform-lock-table"
-  billing_mode   = "PAY_PER_REQUEST"
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-  hash_key = "LockID"
 }
