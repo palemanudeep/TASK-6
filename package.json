@@ -2,7 +2,7 @@
   "name": "medusa-starter-default",
   "version": "0.0.1",
   "description": "A starter for Medusa projects.",
-  "author": "Medusa (https://medusajs.com)",
+  "author": "Medusa (https://medusajs.com), Sebastian Rindom <skrindom@gmail.com>",
   "license": "MIT",
   "keywords": [
     "sqlite",
@@ -14,13 +14,13 @@
   ],
   "scripts": {
     "clean": "cross-env ./node_modules/.bin/rimraf dist",
-    "build": "cross-env npm run clean && npm run build:server && npm run build:admin",
+    "build": "cross-env npm run clean && npm run build:server && npm run build:admin && babel src -d dist --extensions \".ts,.js\"",
     "build:server": "cross-env npm run clean && tsc -p tsconfig.server.json",
     "build:admin": "cross-env medusa-admin build",
     "watch": "cross-env tsc --watch",
     "test": "cross-env jest",
     "seed": "cross-env medusa seed -f ./data/seed.json",
-    "start": "cross-env npm run build && medusa start",
+    "start": "npm run build && medusa migrations run && medusa start",
     "start:custom": "cross-env npm run build && node --preserve-symlinks --trace-warnings index.js",
     "dev": "cross-env npm run build:server && medusa develop"
   },
@@ -41,12 +41,12 @@
     "medusa-interfaces": "1.3.10",
     "medusa-payment-manual": "1.0.25",
     "medusa-payment-stripe": "6.0.11",
-    "prism-react-renderer": "^2.0.4",
+    "medusa-file-minio": "^1.1.2",
     "typeorm": "0.3.16"
   },
   "devDependencies": {
-    "@babel/cli": "^7.14.3",
-    "@babel/core": "^7.14.3",
+    "@babel/cli": "^7.18.10",
+    "@babel/core": "^7.18.10",
     "@babel/preset-typescript": "^7.21.4",
     "@medusajs/medusa-cli": "1.3.23",
     "@stdlib/number-float64-base-normalize": "0.0.8",

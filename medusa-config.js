@@ -49,6 +49,12 @@ const plugins = [
       autoRebuild: true,
       develop: {
         open: process.env.OPEN_BROWSER !== "false",
+        port: 7001,         // Port on which the admin dashboard will run
+        host: "0.0.0.0",   // Listen on all network interfaces
+        logLevel: "error",
+        stats: "normal",
+        allowedHosts: "auto",
+        webSocketURL: undefined,
       },
     },
   },
