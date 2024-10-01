@@ -1,9 +1,16 @@
-name: Build, Push, and Deploy to AWS
+name: Deploy or Destroy Medusa
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Select the action to perform'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
 
 jobs:
   build-push-deploy:
