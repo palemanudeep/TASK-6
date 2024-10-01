@@ -18,6 +18,7 @@ resource "aws_route_table" "public" {
     Name = "public-route-table_new_service"
   }
 }
+
 resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.subnet_id.id
   route_table_id = aws_route_table.public.id
@@ -32,6 +33,7 @@ resource "aws_vpc" "main" {
     Name = "medusa-backendserver_new_service"
   }
 }
+
 resource "aws_subnet" "subnet_id" {
   vpc_id     = aws_vpc.main.id
   cidr_block = "10.0.1.0/24"
@@ -41,6 +43,7 @@ resource "aws_subnet" "subnet_id" {
     Name = "main-subnet_new_service"
   }
 }
+
 resource "aws_security_group" "sg_id" {
   vpc_id = aws_vpc.main.id
 
@@ -50,12 +53,14 @@ resource "aws_security_group" "sg_id" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   ingress {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   ingress {
     from_port   = 80
     to_port     = 80
@@ -68,5 +73,9 @@ resource "aws_security_group" "sg_id" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "main-security-group_new_service"
   }
 }
