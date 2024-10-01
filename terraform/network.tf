@@ -2,7 +2,7 @@ resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "main-internet-gateway"
+    Name = "main-internet-gateway_new_service"
   }
 }
 
@@ -15,7 +15,7 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name = "public-route-table"
+    Name = "public-route-table_new_service"
   }
 }
 resource "aws_route_table_association" "public" {
@@ -26,20 +26,19 @@ resource "aws_route_table_association" "public" {
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
 
-  enable_dns_support = true
+  enable_dns_support   = true
   enable_dns_hostnames = true
   tags = {
-    Name = "medusa-backendserver"
+    Name = "medusa-backendserver_new_service"
   }
 }
 resource "aws_subnet" "subnet_id" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.1.0/24"
-  
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "10.0.1.0/24"
 
   map_public_ip_on_launch = true
   tags = {
-    Name = "main-subnet"
+    Name = "main-subnet_new_service"
   }
 }
 resource "aws_security_group" "sg_id" {
@@ -71,7 +70,3 @@ resource "aws_security_group" "sg_id" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "main-security-group"
-  }
-}

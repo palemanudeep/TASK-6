@@ -11,7 +11,6 @@ on:
         options:
           - apply
           - destroy
-
 jobs:
   build-push-deploy:
     runs-on: ubuntu-latest
@@ -43,7 +42,7 @@ jobs:
         run: |
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-      
+      # Build and push Docker image
       - name: Build and push Docker image
         env:
           ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
@@ -67,9 +66,15 @@ jobs:
           cd terraform
           terraform init
 
+      # Terraform Plan
+      - name: Terraform Plan
+        run: |
+          cd terraform
+          terraform plan -var "image_tag=${{ github.sha }}"
+
       # Terraform Apply to Update ECS Task Definition and Deploy
       - name: Terraform Apply
         run: |
           cd terraform
           terraform apply -auto-approve -var "image_tag=${{ github.sha }}"
-        continue-on-error: false # Ensure the workflow fails if this step fails
+        continue-on-error: false
